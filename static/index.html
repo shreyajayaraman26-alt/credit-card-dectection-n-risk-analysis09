@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Credit Card Fraud & Risk Analyser | AI Intelligence Suite</title>
+  <title>Fraud & Risk Decision Engine | Enterprise Dashboard</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- React 18 & ReactDOM -->
@@ -11,12 +11,10 @@
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
   <!-- Babel Standalone for JSX -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <!-- Lucide Icons -->
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <!-- Inter Font -->
+  <!-- Inter & JetBrains Mono fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <script>
     tailwind.config = {
@@ -24,17 +22,19 @@
       theme: {
         extend: {
           fontFamily: {
-            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
             mono: ['"JetBrains Mono"', 'monospace'],
           },
           colors: {
             brand: {
-              50: '#eef2ff',
-              100: '#e0e7ff',
-              500: '#6366f1',
-              600: '#4f46e5',
-              700: '#4338ca',
-              900: '#312e81',
+              50: '#f8fafc',
+              100: '#f1f5f9',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e293b',
+              900: '#0f172a',
+              950: '#0b0f19',
             }
           }
         }
@@ -43,40 +43,28 @@
   </script>
   <style>
     body {
-      background: radial-gradient(circle at 50% 0%, #111827 0%, #030712 100%);
-      color: #f3f4f6;
+      background-color: #0b0f19;
+      color: #e2e8f0;
       min-height: 100vh;
+      letter-spacing: -0.01em;
     }
-    .glass-panel {
-      background: rgba(17, 24, 39, 0.7);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 255, 255, 0.08);
+    .panel-card {
+      background-color: #111827;
+      border: 1px solid #1f2937;
     }
-    .glass-card {
-      background: rgba(31, 41, 55, 0.5);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.06);
+    .sub-card {
+      background-color: #161f30;
+      border: 1px solid #233044;
     }
-    .glow-cyan {
-      box-shadow: 0 0 25px -5px rgba(6, 182, 212, 0.25);
+    input[type="range"] {
+      accent-color: #3b82f6;
     }
-    .glow-emerald {
-      box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.3);
-    }
-    .glow-rose {
-      box-shadow: 0 0 25px -5px rgba(244, 63, 94, 0.35);
-    }
-    .glow-amber {
-      box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.3);
-    }
-    /* Custom scrollbar */
     ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
     ::-webkit-scrollbar-track {
-      background: #0f172a;
+      background: #0b0f19;
     }
     ::-webkit-scrollbar-thumb {
       background: #334155;
@@ -84,21 +72,29 @@
     }
   </style>
 </head>
-<body class="antialiased selection:bg-indigo-500 selection:text-white">
+<body class="antialiased">
   <div id="root"></div>
 
   <script type="text/babel">
-    const { useState, useEffect, useMemo, useRef } = React;
+    const { useState, useEffect } = React;
+
+    const CURRENCIES = {
+      EUR: { symbol: '€', label: 'EUR (€)', rate: 1.0 },
+      INR: { symbol: '₹', label: 'INR (₹)', rate: 90.0 },
+      USD: { symbol: '$', label: 'USD ($)', rate: 1.08 },
+      GBP: { symbol: '£', label: 'GBP (£)', rate: 0.85 },
+    };
 
     function App() {
       const [activeTab, setActiveTab] = useState('simulator');
+      const [currency, setCurrency] = useState('EUR');
       const [modelInfo, setModelInfo] = useState(null);
       const [samplePool, setSamplePool] = useState({ fraud: [], legit: [] });
-      const [selectedPreset, setSelectedPreset] = useState('fraud_1');
+      const [selectedPreset, setSelectedPreset] = useState('fraud_0');
       const [loading, setLoading] = useState(false);
       const [scoreResult, setScoreResult] = useState(null);
 
-      // Form state for 28 PCA features + Time + Amount
+      // Raw transaction features (V1-V28, Time, Amount)
       const [txData, setTxData] = useState({
         Time: 406.0,
         Amount: 1809.68,
@@ -110,7 +106,7 @@
         V26: 0.17, V27: 0.26, V28: -0.14
       });
 
-      // Batch state
+      // Batch evaluation state
       const [batchResults, setBatchResults] = useState(null);
       const [batchLoading, setBatchLoading] = useState(false);
 
@@ -122,30 +118,34 @@
       const fetchModelInfo = async () => {
         try {
           const res = await fetch('/api/model-info');
-          const data = await res.json();
-          setModelInfo(data);
+          if (res.ok) {
+            const data = await res.json();
+            setModelInfo(data);
+          }
         } catch (err) {
-          console.error("Failed to load model info:", err);
+          console.error("Model info fetch failed:", err);
         }
       };
 
       const fetchSamples = async () => {
         try {
           const res = await fetch('/api/sample-transactions');
-          const data = await res.json();
-          setSamplePool(data);
-          if (data.fraud && data.fraud.length > 0) {
-            loadPresetData(data.fraud[0]);
+          if (res.ok) {
+            const data = await res.json();
+            setSamplePool(data);
+            if (data.fraud && data.fraud.length > 0) {
+              loadPresetData(data.fraud[0]);
+            }
           }
         } catch (err) {
-          console.error("Failed to load sample rows:", err);
+          console.error("Sample fetch failed:", err);
         }
       };
 
       const loadPresetData = (sampleRow) => {
         const newTx = {
-          Time: sampleRow.Time || 406.0,
-          Amount: sampleRow.Amount || 100.0,
+          Time: sampleRow.Time !== undefined ? sampleRow.Time : 406.0,
+          Amount: sampleRow.Amount !== undefined ? sampleRow.Amount : 120.0,
         };
         for (let i = 1; i <= 28; i++) {
           newTx[`V${i}`] = sampleRow[`V${i}`] !== undefined ? sampleRow[`V${i}`] : 0.0;
@@ -154,31 +154,22 @@
         scoreTransaction(newTx);
       };
 
-      const handlePresetChange = (type) => {
-        setSelectedPreset(type);
-        if (type.startsWith('fraud') && samplePool.fraud.length > 0) {
-          const idx = parseInt(type.split('_')[1] || '0', 10) % samplePool.fraud.length;
-          loadPresetData(samplePool.fraud[idx]);
-        } else if (type.startsWith('legit') && samplePool.legit.length > 0) {
-          const idx = parseInt(type.split('_')[1] || '0', 10) % samplePool.legit.length;
-          loadPresetData(samplePool.legit[idx]);
-        } else if (type === 'night_high') {
-          const highNight = {
-            Time: 7200, // 2:00 AM
-            Amount: 3450.00,
-            V1: -1.8, V2: 2.1, V3: -2.4, V4: 4.2, V5: -1.2,
-            V6: -0.8, V7: -2.9, V8: 1.5, V9: -2.3, V10: -3.1,
-            V11: 3.5, V12: -3.8, V13: 0.1, V14: -5.1, V15: 0.2,
-            V16: -2.4, V17: -3.9, V18: -0.6, V19: 0.8, V20: 0.4,
-            V21: 0.6, V22: -0.1, V23: -0.5, V24: 0.2, V25: 0.1,
-            V26: 0.2, V27: 0.3, V28: -0.1
-          };
-          setTxData(highNight);
-          scoreTransaction(highNight);
-        } else if (type === 'coffee_legit') {
+      const handlePresetChange = (presetKey) => {
+        setSelectedPreset(presetKey);
+        if (presetKey === 'fraud_0' && samplePool.fraud && samplePool.fraud.length > 0) {
+          loadPresetData(samplePool.fraud[0]);
+        } else if (presetKey === 'fraud_1' && samplePool.fraud && samplePool.fraud.length > 1) {
+          loadPresetData(samplePool.fraud[1]);
+        } else if (presetKey === 'fraud_2' && samplePool.fraud && samplePool.fraud.length > 2) {
+          loadPresetData(samplePool.fraud[2]);
+        } else if (presetKey === 'legit_0' && samplePool.legit && samplePool.legit.length > 0) {
+          loadPresetData(samplePool.legit[0]);
+        } else if (presetKey === 'legit_1' && samplePool.legit && samplePool.legit.length > 1) {
+          loadPresetData(samplePool.legit[1]);
+        } else if (presetKey === 'coffee_legit') {
           const coffee = {
             Time: 43200, // 12:00 PM
-            Amount: 4.75,
+            Amount: 4.50,
             V1: -0.2, V2: 0.1, V3: 0.8, V4: -0.4, V5: 0.3,
             V6: -0.1, V7: 0.2, V8: 0.05, V9: -0.1, V10: -0.05,
             V11: 0.2, V12: 0.4, V13: -0.2, V14: 0.1, V15: 0.8,
@@ -188,6 +179,19 @@
           };
           setTxData(coffee);
           scoreTransaction(coffee);
+        } else if (presetKey === 'night_high') {
+          const nightTx = {
+            Time: 7200, // 02:00 AM
+            Amount: 2850.00,
+            V1: -1.8, V2: 2.1, V3: -2.4, V4: 4.2, V5: -1.2,
+            V6: -0.8, V7: -2.9, V8: 1.5, V9: -2.3, V10: -3.1,
+            V11: 3.5, V12: -3.8, V13: 0.1, V14: -5.1, V15: 0.2,
+            V16: -2.4, V17: -3.9, V18: -0.6, V19: 0.8, V20: 0.4,
+            V21: 0.6, V22: -0.1, V23: -0.5, V24: 0.2, V25: 0.1,
+            V26: 0.2, V27: 0.3, V28: -0.1
+          };
+          setTxData(nightTx);
+          scoreTransaction(nightTx);
         }
       };
 
@@ -199,220 +203,269 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(dataToScore)
           });
-          const result = await res.json();
-          setScoreResult(result);
+          if (res.ok) {
+            const result = await res.json();
+            setScoreResult(result);
+          }
         } catch (err) {
-          console.error("Scoring error:", err);
+          console.error("Score error:", err);
         } finally {
           setLoading(false);
         }
       };
 
-      const handleSliderChange = (key, val) => {
-        const updated = { ...txData, [key]: parseFloat(val) };
+      const handleParamChange = (field, val) => {
+        const updated = { ...txData, [field]: parseFloat(val) };
         setTxData(updated);
         setSelectedPreset('custom');
         scoreTransaction(updated);
       };
 
-      const runBatchEvaluation = async () => {
+      const runBatchSimulation = async () => {
         setBatchLoading(true);
         try {
           const res = await fetch('/api/batch-score', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ count: 60 })
+            body: JSON.stringify({ count: 50 })
           });
-          const data = await res.json();
-          setBatchResults(data);
+          if (res.ok) {
+            const data = await res.json();
+            setBatchResults(data);
+          }
         } catch (err) {
-          console.error("Batch error:", err);
+          console.error("Batch simulation error:", err);
         } finally {
           setBatchLoading(false);
         }
       };
 
+      const formatAmount = (baseAmt) => {
+        const curr = CURRENCIES[currency] || CURRENCIES.EUR;
+        const converted = (baseAmt * curr.rate);
+        return `${curr.symbol}${converted.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+      };
+
+      const hourOfDay = ((txData.Time % 86400) / 3600);
+      const isNight = hourOfDay < 6.0 || hourOfDay >= 22.0;
+
       return (
         <div className="flex flex-col min-h-screen">
-          {/* Top Navbar */}
-          <header className="sticky top-0 z-50 glass-panel border-b border-gray-800">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+          {/* Muted Enterprise Header */}
+          <header className="border-b border-gray-800 bg-gray-900/90 sticky top-0 z-40">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+              
+              {/* Brand / Title */}
               <div className="flex items-center space-x-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-indigo-500 to-cyan-400 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                  <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                  </svg>
+                <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white text-sm shadow-sm">
+                  F
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2">
-                    FraudGuard AI <span className="text-xs px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400 font-mono font-medium border border-indigo-500/30">FastAPI + React</span>
-                  </h1>
-                  <p className="text-xs text-gray-400">Adaptive Hybrid Risk & Anomaly Scoring Engine</p>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-sm font-semibold text-gray-100">Fraud Risk Analyser</h1>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-950 text-emerald-400 border border-emerald-800/60">
+                      ● Engine Active
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-400">FastAPI + React 18 • Hybrid Decision Pipeline</p>
                 </div>
               </div>
 
-              {/* Navigation Tabs */}
-              <div className="flex items-center space-x-1 bg-gray-900/80 p-1 rounded-xl border border-gray-800">
-                <button
-                  onClick={() => setActiveTab('simulator')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    activeTab === 'simulator'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                  }`}
-                >
-                  ⚡ Live Simulator
-                </button>
-                <button
-                  onClick={() => { setActiveTab('batch'); if (!batchResults) runBatchEvaluation(); }}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    activeTab === 'batch'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                  }`}
-                >
-                  📊 Batch Analyser
-                </button>
-                <button
-                  onClick={() => setActiveTab('metrics')}
-                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    activeTab === 'metrics'
-                      ? 'bg-indigo-600 text-white shadow-md'
-                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/50'
-                  }`}
-                >
-                  🧠 Model Metrics
-                </button>
+              {/* Navigation & Currency Controls */}
+              <div className="flex items-center space-x-3">
+                {/* Currency Selector */}
+                <div className="flex items-center bg-gray-800/90 rounded-lg p-1 border border-gray-700">
+                  <span className="text-xs text-gray-400 px-2 font-medium">Currency:</span>
+                  {Object.keys(CURRENCIES).map((cKey) => (
+                    <button
+                      key={cKey}
+                      onClick={() => setCurrency(cKey)}
+                      className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                        currency === cKey
+                          ? 'bg-gray-700 text-white shadow-sm'
+                          : 'text-gray-400 hover:text-gray-200'
+                      }`}
+                    >
+                      {CURRENCIES[cKey].symbol} {cKey}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Tabs */}
+                <div className="flex items-center bg-gray-800/90 rounded-lg p-1 border border-gray-700">
+                  <button
+                    onClick={() => setActiveTab('simulator')}
+                    className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
+                      activeTab === 'simulator' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    Analyzer
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('batch'); if (!batchResults) runBatchSimulation(); }}
+                    className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
+                      activeTab === 'batch' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    Batch Stream
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('metrics')}
+                    className={`px-3 py-1 text-xs rounded-md font-medium transition-colors ${
+                      activeTab === 'metrics' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-gray-200'
+                    }`}
+                  >
+                    Model Metrics
+                  </button>
+                </div>
+
                 <a
                   href="/docs"
                   target="_blank"
-                  className="px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-400 hover:text-cyan-400 hover:bg-gray-800/50 flex items-center gap-1 transition-all"
+                  className="text-xs font-medium text-gray-400 hover:text-blue-400 border border-gray-700 px-3 py-1.5 rounded-lg bg-gray-800/50 hover:bg-gray-800 transition-colors"
                 >
-                  <span>API Docs</span>
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
+                  API Docs ↗
                 </a>
               </div>
+
             </div>
           </header>
 
-          {/* Main Body */}
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+          {/* Body Content */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-            {/* TAB 1: LIVE SIMULATOR */}
+            {/* TAB 1: TRANSACTION SIMULATOR */}
             {activeTab === 'simulator' && (
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-                {/* Left Column: Transaction Input Controls (7 cols) */}
+                {/* Left: Input & Preset Panel (7 cols) */}
                 <div className="lg:col-span-7 space-y-5">
-                  <div className="glass-panel p-5 rounded-2xl space-y-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-800 pb-3">
+                  <div className="panel-card p-5 rounded-xl space-y-4">
+                    
+                    {/* Header with Presets */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-800">
                       <div>
-                        <h2 className="text-base font-semibold text-white flex items-center gap-2">
-                          <span>Transaction Inspector</span>
-                          {loading && <span className="animate-spin text-indigo-400 text-xs">⟳</span>}
-                        </h2>
-                        <p className="text-xs text-gray-400">Modify inputs or select real transaction presets from Kaggle dataset</p>
+                        <h2 className="text-sm font-semibold text-gray-200">Transaction Parameters</h2>
+                        <p className="text-xs text-gray-400">Select a real Kaggle case study or adjust values</p>
                       </div>
 
-                      {/* Presets dropdown */}
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-400 font-medium">Preset:</span>
+                        <label className="text-xs text-gray-400">Load Case:</label>
                         <select
                           value={selectedPreset}
                           onChange={(e) => handlePresetChange(e.target.value)}
-                          className="bg-gray-900 border border-gray-700 text-xs text-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-indigo-500"
+                          className="bg-gray-900 border border-gray-700 text-xs text-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-500"
                         >
-                          <optgroup label="Real Confirmed Frauds (Dataset)">
-                            <option value="fraud_0">Confirmed Fraud #1 ($1,809.68)</option>
-                            <option value="fraud_1">Confirmed Fraud #2 ($529.00)</option>
-                            <option value="fraud_2">Confirmed Fraud #3 ($239.93)</option>
+                          <optgroup label="Historical Confirmed Fraud Cases">
+                            <option value="fraud_0">🚨 Confirmed Fraud #1 (High-Value)</option>
+                            <option value="fraud_1">🚨 Confirmed Fraud #2 (Standard Card)</option>
+                            <option value="fraud_2">🚨 Confirmed Fraud #3 (Online Transfer)</option>
                           </optgroup>
-                          <optgroup label="Real Legitimate Transactions">
-                            <option value="legit_0">Normal Spend #1 ($149.62)</option>
-                            <option value="legit_1">Normal Spend #2 ($2.69)</option>
-                            <option value="coffee_legit">Coffee Purchase ($4.75, Midday)</option>
+                          <optgroup label="Legitimate Transaction Cases">
+                            <option value="legit_0">✅ Normal Spend #1</option>
+                            <option value="legit_1">✅ Normal Spend #2</option>
+                            <option value="coffee_legit">☕ Coffee Purchase (Midday)</option>
                           </optgroup>
-                          <optgroup label="Synthetic Edge Cases">
-                            <option value="night_high">Overnight High-Value ($3,450, 02:00 AM)</option>
-                            <option value="custom">Custom Parameters (Sliders)</option>
+                          <optgroup label="Edge Cases">
+                            <option value="night_high">🌙 Overnight Anomaly (02:00 AM)</option>
+                            <option value="custom">✏️ Custom Manual Inputs</option>
                           </optgroup>
                         </select>
                       </div>
                     </div>
 
-                    {/* Primary Parameters */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
-                      <div className="glass-card p-3 rounded-xl">
-                        <label className="text-xs text-gray-400 font-medium block mb-1">Transaction Amount</label>
+                    {/* Primary Inputs */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sub-card p-3 rounded-lg">
+                        <label className="text-xs text-gray-400 font-medium block mb-1">Amount</label>
                         <div className="relative">
-                          <span className="absolute left-2.5 top-1.5 text-gray-500 font-mono text-sm">$</span>
+                          <span className="absolute left-2.5 top-1.5 text-gray-400 font-mono text-xs">
+                            {CURRENCIES[currency].symbol}
+                          </span>
                           <input
                             type="number"
                             min="0"
-                            step="0.01"
-                            value={txData.Amount}
-                            onChange={(e) => handleSliderChange('Amount', e.target.value)}
-                            className="w-full bg-gray-950 border border-gray-800 rounded-lg pl-6 pr-3 py-1.5 font-mono text-sm text-emerald-400 focus:outline-none focus:border-indigo-500"
+                            step="0.1"
+                            value={(txData.Amount * (CURRENCIES[currency].rate || 1.0)).toFixed(2)}
+                            onChange={(e) => {
+                              const inputVal = parseFloat(e.target.value) || 0;
+                              const baseVal = inputVal / (CURRENCIES[currency].rate || 1.0);
+                              handleParamChange('Amount', baseVal);
+                            }}
+                            className="w-full bg-gray-900 border border-gray-700 rounded-md pl-6 pr-2 py-1 font-mono text-sm text-gray-100 focus:outline-none focus:border-blue-500"
                           />
                         </div>
+                        <span className="text-[10px] text-gray-500 mt-1 block">
+                          Base: €{txData.Amount.toFixed(2)} EUR
+                        </span>
                       </div>
 
-                      <div className="glass-card p-3 rounded-xl">
-                        <label className="text-xs text-gray-400 font-medium block mb-1">
-                          Time of Day: <span className="text-indigo-300 font-mono">{(((txData.Time % 86400) / 3600)).toFixed(1)}h</span>
-                        </label>
+                      <div className="sub-card p-3 rounded-lg">
+                        <div className="flex justify-between items-center mb-1">
+                          <label className="text-xs text-gray-400 font-medium">Time of Day</label>
+                          <span className="text-xs font-mono text-blue-400">{hourOfDay.toFixed(1)}h</span>
+                        </div>
                         <input
                           type="range"
                           min="0"
                           max="86400"
-                          step="600"
+                          step="900"
                           value={txData.Time % 86400}
-                          onChange={(e) => handleSliderChange('Time', e.target.value)}
-                          className="w-full accent-indigo-500 mt-2"
+                          onChange={(e) => handleParamChange('Time', e.target.value)}
+                          className="w-full mt-1.5"
                         />
-                        <div className="flex justify-between text-[10px] text-gray-500 font-mono mt-0.5">
-                          <span>00:00 (Night)</span>
-                          <span>12:00 (Day)</span>
-                          <span>23:59 (Night)</span>
+                        <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono">
+                          <span>00:00</span>
+                          <span>12:00</span>
+                          <span>24:00</span>
                         </div>
                       </div>
 
-                      <div className="glass-card p-3 rounded-xl flex flex-col justify-between">
-                        <label className="text-xs text-gray-400 font-medium">Engineered Features</label>
-                        <div className="flex items-center gap-2 pt-1">
-                          <span className={`text-[11px] px-2 py-0.5 rounded font-mono font-medium ${
-                            ((txData.Time % 86400) / 3600 < 6 || (txData.Time % 86400) / 3600 >= 22)
-                              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                              : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                      <div className="sub-card p-3 rounded-lg flex flex-col justify-between">
+                        <label className="text-xs text-gray-400 font-medium">Temporal Context</label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className={`text-xs px-2 py-0.5 rounded font-medium ${
+                            isNight
+                              ? 'bg-amber-950/70 text-amber-300 border border-amber-800/60'
+                              : 'bg-emerald-950/70 text-emerald-300 border border-emerald-800/60'
                           }`}>
-                            {((txData.Time % 86400) / 3600 < 6 || (txData.Time % 86400) / 3600 >= 22) ? '🌙 Night Active' : '☀️ Daylight'}
-                          </span>
-                          <span className="text-[11px] px-2 py-0.5 rounded font-mono bg-gray-800 text-gray-300 border border-gray-700">
-                            Log(Amt): {Math.log1p(Math.max(txData.Amount, 0)).toFixed(2)}
+                            {isNight ? '🌙 Night (22:00-06:00)' : '☀️ Day Business Hours'}
                           </span>
                         </div>
+                        <span className="text-[10px] text-gray-500 mt-1">
+                          Log(Amt): {Math.log1p(Math.max(txData.Amount, 0)).toFixed(2)}
+                        </span>
                       </div>
                     </div>
 
-                    {/* Key PCA Anomaly Signals (V1 to V28) */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Top PCA Discriminative Dimensions</span>
-                        <span className="text-[11px] text-gray-500">Sensitive to fraud clusters (V4, V10, V12, V14, V17)</span>
+                    {/* Key Anomaly Indicators */}
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-gray-300">Key PCA Fraud Dimension Indicators</span>
+                        <span className="text-[11px] text-gray-500">Sensitive components (V4, V10, V12, V14, V17)</span>
                       </div>
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-                        {['V4', 'V10', 'V12', 'V14', 'V17', 'V1', 'V2', 'V3'].map((vKey) => {
-                          const val = txData[vKey] || 0.0;
-                          const isHighRisk = (vKey === 'V14' && val < -2.5) || (vKey === 'V4' && val > 2.5) || (vKey === 'V12' && val < -2.0);
+                        {[
+                          { key: 'V14', label: 'V14 (Identity / High Risk)' },
+                          { key: 'V4', label: 'V4 (Deviation Metric)' },
+                          { key: 'V12', label: 'V12 (Velocity Discrepancy)' },
+                          { key: 'V10', label: 'V10 (Channel Outlier)' },
+                          { key: 'V17', label: 'V17 (Cardholder Cluster)' },
+                          { key: 'V1', label: 'V1 (Component 1)' },
+                          { key: 'V2', label: 'V2 (Component 2)' },
+                          { key: 'V3', label: 'V3 (Component 3)' },
+                        ].map(({ key, label }) => {
+                          const val = txData[key] || 0.0;
+                          const isWarning = (key === 'V14' && val < -2.0) || (key === 'V4' && val > 2.0) || (key === 'V12' && val < -2.0);
                           return (
-                            <div key={vKey} className={`p-2.5 rounded-xl border transition-all ${
-                              isHighRisk ? 'bg-rose-950/20 border-rose-800/40' : 'bg-gray-900/60 border-gray-800'
+                            <div key={key} className={`p-2.5 rounded-lg border ${
+                              isWarning ? 'bg-rose-950/20 border-rose-900/60' : 'bg-gray-900/60 border-gray-800'
                             }`}>
                               <div className="flex justify-between items-center text-xs mb-1">
-                                <span className={`font-mono font-semibold ${isHighRisk ? 'text-rose-400' : 'text-gray-400'}`}>{vKey}</span>
+                                <span className={`font-mono text-[11px] font-medium ${isWarning ? 'text-rose-400' : 'text-gray-400'}`}>
+                                  {key}
+                                </span>
                                 <span className="font-mono text-xs text-gray-200">{val.toFixed(2)}</span>
                               </div>
                               <input
@@ -421,8 +474,8 @@
                                 max="6.0"
                                 step="0.1"
                                 value={val}
-                                onChange={(e) => handleSliderChange(vKey, e.target.value)}
-                                className={`w-full ${isHighRisk ? 'accent-rose-500' : 'accent-indigo-500'}`}
+                                onChange={(e) => handleParamChange(key, e.target.value)}
+                                className="w-full"
                               />
                             </div>
                           );
@@ -430,268 +483,245 @@
                       </div>
                     </div>
 
-                    {/* Secondary PCA expansion */}
+                    {/* Secondary Dimensions Accordion */}
                     <details className="group pt-1">
-                      <summary className="text-xs text-indigo-400 hover:text-indigo-300 font-medium cursor-pointer list-none flex items-center gap-1">
-                        <svg className="w-3.5 h-3.5 group-open:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                        <span>Inspect all other PCA dimensions (V5–V9, V11, V13, V15–V16, V18–V28)</span>
+                      <summary className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer font-medium select-none">
+                        ▸ View remaining PCA feature dimensions (V5–V9, V11, V13, V15–V16, V18–V28)
                       </summary>
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-3">
                         {Array.from({ length: 28 }, (_, i) => `V${i + 1}`)
-                          .filter(k => !['V4', 'V10', 'V12', 'V14', 'V17', 'V1', 'V2', 'V3'].includes(k))
-                          .map((vKey) => (
-                            <div key={vKey} className="bg-gray-900/40 p-2 rounded-lg border border-gray-800/80">
-                              <div className="flex justify-between items-center text-[11px] mb-0.5">
-                                <span className="font-mono text-gray-400">{vKey}</span>
-                                <span className="font-mono text-gray-300">{(txData[vKey] || 0.0).toFixed(2)}</span>
+                          .filter(k => !['V14', 'V4', 'V12', 'V10', 'V17', 'V1', 'V2', 'V3'].includes(k))
+                          .map((key) => (
+                            <div key={key} className="bg-gray-900/40 p-2 rounded border border-gray-800">
+                              <div className="flex justify-between items-center text-[10px] mb-0.5 font-mono">
+                                <span className="text-gray-400">{key}</span>
+                                <span className="text-gray-300">{(txData[key] || 0.0).toFixed(2)}</span>
                               </div>
                               <input
                                 type="range"
                                 min="-5.0"
                                 max="5.0"
                                 step="0.2"
-                                value={txData[vKey] || 0.0}
-                                onChange={(e) => handleSliderChange(vKey, e.target.value)}
-                                className="w-full accent-gray-500"
+                                value={txData[key] || 0.0}
+                                onChange={(e) => handleParamChange(key, e.target.value)}
+                                className="w-full"
                               />
                             </div>
                           ))}
                       </div>
                     </details>
+
                   </div>
                 </div>
 
-                {/* Right Column: Risk Verdict & AI Explanation (5 cols) */}
+                {/* Right: Decision & Explainability Panel (5 cols) */}
                 <div className="lg:col-span-5 space-y-5">
                   {scoreResult ? (
-                    <div className="space-y-5">
-                      {/* Main Decision Banner */}
-                      <div className={`p-6 rounded-2xl border transition-all ${
+                    <div className="space-y-4">
+                      
+                      {/* Decision Card */}
+                      <div className={`p-5 rounded-xl border ${
                         scoreResult.action === 'APPROVE'
-                          ? 'glass-panel border-emerald-500/40 glow-emerald'
+                          ? 'panel-card border-emerald-800/80 bg-emerald-950/10'
                           : scoreResult.action === 'REVIEW'
-                          ? 'glass-panel border-amber-500/40 glow-amber'
-                          : 'glass-panel border-rose-500/40 glow-rose'
+                          ? 'panel-card border-amber-800/80 bg-amber-950/10'
+                          : 'panel-card border-rose-800/80 bg-rose-950/10'
                       }`}>
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-xs font-bold uppercase tracking-wider text-gray-400">Risk Engine Decision</span>
-                          <span className={`text-xs px-3 py-1 rounded-full font-bold font-mono tracking-wide ${
-                            scoreResult.action === 'APPROVE'
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                              : scoreResult.action === 'REVIEW'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                              : 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                        
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-gray-400">Risk Assessment</span>
+                          <span className={`px-2.5 py-0.5 rounded text-xs font-semibold font-mono ${
+                            scoreResult.action === 'APPROVE' ? 'bg-emerald-900/70 text-emerald-300 border border-emerald-700/50' :
+                            scoreResult.action === 'REVIEW' ? 'bg-amber-900/70 text-amber-300 border border-amber-700/50' :
+                            'bg-rose-900/70 text-rose-300 border border-rose-700/50'
                           }`}>
-                            LEVEL {scoreResult.risk_level}
+                            LEVEL: {scoreResult.risk_level}
                           </span>
                         </div>
 
                         <div className="flex items-baseline justify-between mb-3">
                           <div>
-                            <div className={`text-4xl font-extrabold tracking-tight ${
+                            <div className={`text-3xl font-bold ${
                               scoreResult.action === 'APPROVE' ? 'text-emerald-400' :
-                              scoreResult.action === 'REVIEW' ? 'text-amber-400' : 'text-rose-500'
+                              scoreResult.action === 'REVIEW' ? 'text-amber-400' : 'text-rose-400'
                             }`}>
                               {scoreResult.action}
                             </div>
-                            <p className="text-xs text-gray-300 mt-1">
+                            <p className="text-xs text-gray-300 mt-0.5">
                               {scoreResult.action === 'APPROVE' && 'Transaction cleared. Low risk profile.'}
-                              {scoreResult.action === 'REVIEW' && 'Queued for human audit or 2FA challenge.'}
-                              {scoreResult.action === 'FLAG' && 'Critical fraud alert. Blocked immediately.'}
+                              {scoreResult.action === 'REVIEW' && 'Requires secondary verification / manual review.'}
+                              {scoreResult.action === 'FLAG' && 'High fraud probability. Transaction declined.'}
                             </p>
                           </div>
                           <div className="text-right">
-                            <div className="text-3xl font-extrabold font-mono text-white">
-                              {(scoreResult.risk_score * 100).toFixed(1)}<span className="text-base text-gray-400 font-normal">%</span>
-                            </div>
-                            <span className="text-[11px] text-gray-400">Combined Risk</span>
+                            <span className="text-2xl font-bold font-mono text-gray-100">
+                              {(scoreResult.risk_score * 100).toFixed(1)}%
+                            </span>
+                            <span className="block text-[10px] text-gray-400">Risk Index</span>
                           </div>
                         </div>
 
-                        {/* Visual Progress Bar */}
-                        <div className="w-full bg-gray-900 rounded-full h-3 p-0.5 border border-gray-800 relative overflow-hidden">
+                        {/* Progress Bar */}
+                        <div className="w-full bg-gray-900 rounded-full h-2.5 border border-gray-800 overflow-hidden">
                           <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              scoreResult.action === 'APPROVE' ? 'bg-gradient-to-r from-emerald-600 to-emerald-400' :
-                              scoreResult.action === 'REVIEW' ? 'bg-gradient-to-r from-amber-600 to-amber-400' :
-                              'bg-gradient-to-r from-rose-700 via-rose-500 to-red-400'
+                            className={`h-full transition-all duration-300 ${
+                              scoreResult.action === 'APPROVE' ? 'bg-emerald-500' :
+                              scoreResult.action === 'REVIEW' ? 'bg-amber-500' : 'bg-rose-500'
                             }`}
-                            style={{ width: `${Math.min(Math.max(scoreResult.risk_score * 100, 4), 100)}%` }}
+                            style={{ width: `${Math.min(Math.max(scoreResult.risk_score * 100, 3), 100)}%` }}
                           />
                         </div>
-                        <div className="flex justify-between text-[10px] text-gray-400 font-mono mt-1.5 px-0.5">
-                          <span>0% (Safe)</span>
-                          <span className="text-amber-400">30% (Review Threshold)</span>
-                          <span className="text-rose-400">70% (Flag Threshold)</span>
+                        <div className="flex justify-between text-[10px] text-gray-400 font-mono mt-1">
+                          <span>0% Safe</span>
+                          <span>30% Review</span>
+                          <span>70% Decline</span>
                           <span>100%</span>
                         </div>
                       </div>
 
-                      {/* Model Breakdown Split (RF vs IF) */}
-                      <div className="glass-panel p-5 rounded-2xl space-y-3">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400">Dual-Signal Synergy</h3>
+                      {/* Dual Signal Split */}
+                      <div className="panel-card p-4 rounded-xl space-y-3">
+                        <span className="text-xs font-semibold text-gray-300 block">Hybrid Model Signal Breakdown</span>
                         <div className="grid grid-cols-2 gap-3">
-                          {/* Supervised Signal */}
-                          <div className="glass-card p-3 rounded-xl border-l-4 border-indigo-500">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-gray-400 font-medium">Random Forest</span>
-                              <span className="font-mono text-indigo-400 font-bold">{(scoreResult.rf_weight * 100).toFixed(0)}% Wt</span>
+                          <div className="sub-card p-3 rounded-lg border-l-2 border-l-blue-500">
+                            <div className="flex justify-between text-xs text-gray-400 mb-0.5">
+                              <span>Random Forest</span>
+                              <span className="font-mono text-blue-400">{(scoreResult.rf_weight * 100).toFixed(0)}% weight</span>
                             </div>
-                            <div className="text-xl font-bold font-mono text-white mt-1">
+                            <div className="text-lg font-bold font-mono text-gray-100">
                               {(scoreResult.rf_fraud_probability * 100).toFixed(1)}%
                             </div>
                             <span className="text-[10px] text-gray-400">Supervised Fraud Prob</span>
                           </div>
 
-                          {/* Unsupervised Signal */}
-                          <div className="glass-card p-3 rounded-xl border-l-4 border-cyan-500">
-                            <div className="flex justify-between items-center text-xs">
-                              <span className="text-gray-400 font-medium">Isolation Forest</span>
-                              <span className="font-mono text-cyan-400 font-bold">{(scoreResult.if_weight * 100).toFixed(0)}% Wt</span>
+                          <div className="sub-card p-3 rounded-lg border-l-2 border-l-teal-500">
+                            <div className="flex justify-between text-xs text-gray-400 mb-0.5">
+                              <span>Isolation Forest</span>
+                              <span className="font-mono text-teal-400">{(scoreResult.if_weight * 100).toFixed(0)}% weight</span>
                             </div>
-                            <div className="text-xl font-bold font-mono text-white mt-1">
+                            <div className="text-lg font-bold font-mono text-gray-100">
                               {(scoreResult.if_anomaly_score * 100).toFixed(1)}%
                             </div>
-                            <span className="text-[10px] text-gray-400">Unsupervised Outlier</span>
+                            <span className="text-[10px] text-gray-400">Anomaly Deviation Score</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Explainable AI Diagnostics */}
-                      <div className="glass-panel p-5 rounded-2xl space-y-3">
-                        <h3 className="text-xs font-bold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-                          <svg className="w-4 h-4 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span>Explainable AI (XAI) Diagnostics</span>
-                        </h3>
-                        <ul className="space-y-2">
-                          {scoreResult.explanations.map((note, idx) => (
-                            <li key={idx} className="flex items-start gap-2.5 text-xs text-gray-300 bg-gray-900/50 p-2.5 rounded-xl border border-gray-800">
-                              <span className="text-indigo-400 font-bold mt-0.5">•</span>
-                              <span className="leading-relaxed">{note}</span>
+                      {/* Diagnostic Explanations */}
+                      <div className="panel-card p-4 rounded-xl space-y-2.5">
+                        <span className="text-xs font-semibold text-gray-300 block">Decision Diagnostics</span>
+                        <ul className="space-y-1.5">
+                          {scoreResult.explanations.map((item, idx) => (
+                            <li key={idx} className="text-xs text-gray-300 flex items-start gap-2 bg-gray-900/60 p-2 rounded border border-gray-800">
+                              <span className="text-blue-400 mt-0.5 font-bold">•</span>
+                              <span className="leading-relaxed">{item}</span>
                             </li>
                           ))}
                         </ul>
                       </div>
+
                     </div>
                   ) : (
-                    <div className="glass-panel p-10 rounded-2xl text-center text-gray-500">
-                      Loading scoring model...
+                    <div className="panel-card p-8 rounded-xl text-center text-xs text-gray-400">
+                      Evaluating transaction...
                     </div>
                   )}
                 </div>
+
               </div>
             )}
 
-            {/* TAB 2: BATCH TRANSACTION PROCESSOR */}
+            {/* TAB 2: BATCH EVALUATION */}
             {activeTab === 'batch' && (
-              <div className="space-y-6">
-                <div className="glass-panel p-6 rounded-2xl">
-                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-800 pb-4">
+              <div className="space-y-5">
+                <div className="panel-card p-5 rounded-xl space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-gray-800">
                     <div>
-                      <h2 className="text-lg font-bold text-white">Batch Transaction Stream Analyzer</h2>
-                      <p className="text-xs text-gray-400">Simulate incoming transaction batches and assess automated queue triage</p>
+                      <h2 className="text-sm font-semibold text-gray-200">Transaction Stream Simulator</h2>
+                      <p className="text-xs text-gray-400">Evaluates live sample batches and generates triage distribution</p>
                     </div>
                     <button
-                      onClick={runBatchEvaluation}
+                      onClick={runBatchSimulation}
                       disabled={batchLoading}
-                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-indigo-600/30 flex items-center gap-2 transition-all disabled:opacity-50"
+                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
                     >
-                      {batchLoading ? (
-                        <span>Simulating Stream...</span>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                          </svg>
-                          <span>Process New Batch (60 Transactions)</span>
-                        </>
-                      )}
+                      {batchLoading ? 'Evaluating...' : 'Simulate Stream (50 tx)'}
                     </button>
                   </div>
 
                   {batchResults && (
-                    <div className="space-y-6 pt-6">
-                      {/* Summary Cards */}
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                        <div className="glass-card p-4 rounded-xl border-l-4 border-indigo-500">
-                          <span className="text-xs text-gray-400">Total Processed</span>
-                          <div className="text-2xl font-bold font-mono text-white mt-1">{batchResults.total}</div>
-                          <span className="text-[10px] text-gray-500">Avg Latency &lt; 1.2ms</span>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div className="sub-card p-3 rounded-lg">
+                          <span className="text-xs text-gray-400">Total Stream</span>
+                          <div className="text-xl font-bold font-mono text-gray-100 mt-0.5">{batchResults.total}</div>
                         </div>
-                        <div className="glass-card p-4 rounded-xl border-l-4 border-emerald-500">
-                          <span className="text-xs text-gray-400">Approved Instantly</span>
-                          <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">
+                        <div className="sub-card p-3 rounded-lg border-l-2 border-l-emerald-500">
+                          <span className="text-xs text-gray-400">Approved</span>
+                          <div className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
                             {batchResults.summary.APPROVE || 0}
-                            <span className="text-xs font-normal text-gray-400 ml-1.5">
+                            <span className="text-xs font-normal text-gray-400 ml-1">
                               ({(((batchResults.summary.APPROVE || 0) / batchResults.total) * 100).toFixed(0)}%)
                             </span>
                           </div>
-                          <span className="text-[10px] text-emerald-500/80">Frictionless Checkout</span>
                         </div>
-                        <div className="glass-card p-4 rounded-xl border-l-4 border-amber-500">
-                          <span className="text-xs text-gray-400">Manual Review Queue</span>
-                          <div className="text-2xl font-bold font-mono text-amber-400 mt-1">
+                        <div className="sub-card p-3 rounded-lg border-l-2 border-l-amber-500">
+                          <span className="text-xs text-gray-400">Review Queue</span>
+                          <div className="text-xl font-bold font-mono text-amber-400 mt-0.5">
                             {batchResults.summary.REVIEW || 0}
-                            <span className="text-xs font-normal text-gray-400 ml-1.5">
+                            <span className="text-xs font-normal text-gray-400 ml-1">
                               ({(((batchResults.summary.REVIEW || 0) / batchResults.total) * 100).toFixed(0)}%)
                             </span>
                           </div>
-                          <span className="text-[10px] text-amber-500/80">Secondary Verification</span>
                         </div>
-                        <div className="glass-card p-4 rounded-xl border-l-4 border-rose-500">
-                          <span className="text-xs text-gray-400">Auto-Flagged (Blocked)</span>
-                          <div className="text-2xl font-bold font-mono text-rose-400 mt-1">
+                        <div className="sub-card p-3 rounded-lg border-l-2 border-l-rose-500">
+                          <span className="text-xs text-gray-400">Declined / Flagged</span>
+                          <div className="text-xl font-bold font-mono text-rose-400 mt-0.5">
                             {batchResults.summary.FLAG || 0}
-                            <span className="text-xs font-normal text-gray-400 ml-1.5">
+                            <span className="text-xs font-normal text-gray-400 ml-1">
                               ({(((batchResults.summary.FLAG || 0) / batchResults.total) * 100).toFixed(0)}%)
                             </span>
                           </div>
-                          <span className="text-[10px] text-rose-500/80">High Risk Prevented</span>
                         </div>
                       </div>
 
-                      {/* Transaction Table */}
-                      <div className="overflow-x-auto rounded-xl border border-gray-800">
+                      <div className="overflow-x-auto rounded-lg border border-gray-800">
                         <table className="w-full text-left text-xs text-gray-300">
-                          <thead className="bg-gray-900/90 text-gray-400 font-mono uppercase text-[10px] border-b border-gray-800">
+                          <thead className="bg-gray-900 text-gray-400 font-mono text-[10px] uppercase border-b border-gray-800">
                             <tr>
-                              <th className="p-3">#</th>
-                              <th className="p-3">Amount</th>
-                              <th className="p-3">Hour</th>
-                              <th className="p-3">Supervised RF</th>
-                              <th className="p-3">Isolation Forest</th>
-                              <th className="p-3">Blended Risk</th>
-                              <th className="p-3">Action</th>
-                              <th className="p-3">True Label</th>
+                              <th className="p-2.5">#</th>
+                              <th className="p-2.5">Amount ({currency})</th>
+                              <th className="p-2.5">Hour</th>
+                              <th className="p-2.5">Supervised RF</th>
+                              <th className="p-2.5">Isolation Forest</th>
+                              <th className="p-2.5">Risk Score</th>
+                              <th className="p-2.5">Decision</th>
+                              <th className="p-2.5">True Dataset Label</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-gray-800 font-mono">
-                            {batchResults.transactions.map((t, idx) => (
-                              <tr key={idx} className="hover:bg-gray-800/40 transition-colors">
-                                <td className="p-3 text-gray-500">{idx + 1}</td>
-                                <td className="p-3 font-semibold text-white">${t.amount.toFixed(2)}</td>
-                                <td className="p-3 text-gray-400">{t.hour.toFixed(1)}h</td>
-                                <td className="p-3 text-indigo-400">{(t.rf_prob * 100).toFixed(1)}%</td>
-                                <td className="p-3 text-cyan-400">{(t.if_score * 100).toFixed(1)}%</td>
-                                <td className="p-3 font-bold text-white">{(t.risk_score * 100).toFixed(1)}%</td>
-                                <td className="p-3">
-                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                    t.action === 'APPROVE' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
-                                    t.action === 'REVIEW' ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' :
-                                    'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                            {batchResults.transactions.map((item, idx) => (
+                              <tr key={idx} className="hover:bg-gray-800/40">
+                                <td className="p-2.5 text-gray-500">{idx + 1}</td>
+                                <td className="p-2.5 text-gray-100 font-semibold">{formatAmount(item.amount)}</td>
+                                <td className="p-2.5 text-gray-400">{item.hour.toFixed(1)}h</td>
+                                <td className="p-2.5 text-blue-400">{(item.rf_prob * 100).toFixed(1)}%</td>
+                                <td className="p-2.5 text-teal-400">{(item.if_score * 100).toFixed(1)}%</td>
+                                <td className="p-2.5 text-gray-100 font-bold">{(item.risk_score * 100).toFixed(1)}%</td>
+                                <td className="p-2.5">
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-semibold ${
+                                    item.action === 'APPROVE' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' :
+                                    item.action === 'REVIEW' ? 'bg-amber-950 text-amber-400 border border-amber-800' :
+                                    'bg-rose-950 text-rose-400 border border-rose-800'
                                   }`}>
-                                    {t.action}
+                                    {item.action}
                                   </span>
                                 </td>
-                                <td className="p-3">
-                                  <span className={`text-[10px] px-2 py-0.5 rounded ${
-                                    t.true_class === 1 ? 'bg-rose-950 text-rose-300 font-bold' : 'text-gray-400'
+                                <td className="p-2.5">
+                                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                                    item.true_class === 1 ? 'bg-rose-900/60 text-rose-300 font-bold' : 'text-gray-400'
                                   }`}>
-                                    {t.true_class === 1 ? 'FRAUD' : 'LEGIT'}
+                                    {item.true_class === 1 ? 'Confirmed Fraud' : 'Legitimate'}
                                   </span>
                                 </td>
                               </tr>
@@ -705,97 +735,92 @@
               </div>
             )}
 
-            {/* TAB 3: MODEL METRICS & ARCHITECTURE */}
+            {/* TAB 3: MODEL METRICS */}
             {activeTab === 'metrics' && modelInfo && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="glass-panel p-5 rounded-2xl">
-                    <span className="text-xs text-gray-400 font-medium">Model Accuracy</span>
-                    <div className="text-3xl font-extrabold font-mono text-emerald-400 mt-1">
+              <div className="space-y-5">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                  <div className="panel-card p-4 rounded-xl">
+                    <span className="text-xs text-gray-400">Overall Accuracy</span>
+                    <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">
                       {(modelInfo.metrics.accuracy * 100).toFixed(2)}%
                     </div>
-                    <span className="text-[11px] text-gray-500">Evaluated on 56,961 test rows</span>
+                    <span className="text-[10px] text-gray-500">56,961 holdout test rows</span>
                   </div>
-                  <div className="glass-panel p-5 rounded-2xl">
-                    <span className="text-xs text-gray-400 font-medium">Fraud Recall (Sensitivity)</span>
-                    <div className="text-3xl font-extrabold font-mono text-indigo-400 mt-1">
+                  <div className="panel-card p-4 rounded-xl">
+                    <span className="text-xs text-gray-400">Fraud Recall</span>
+                    <div className="text-2xl font-bold font-mono text-blue-400 mt-1">
                       {(modelInfo.metrics.recall * 100).toFixed(2)}%
                     </div>
-                    <span className="text-[11px] text-gray-500">Caught {modelInfo.metrics.tp}/{modelInfo.metrics.tp + modelInfo.metrics.fn} frauds</span>
+                    <span className="text-[10px] text-gray-500">Caught {modelInfo.metrics.tp}/{modelInfo.metrics.tp + modelInfo.metrics.fn} frauds</span>
                   </div>
-                  <div className="glass-panel p-5 rounded-2xl">
-                    <span className="text-xs text-gray-400 font-medium">Precision</span>
-                    <div className="text-3xl font-extrabold font-mono text-cyan-400 mt-1">
+                  <div className="panel-card p-4 rounded-xl">
+                    <span className="text-xs text-gray-400">Precision</span>
+                    <div className="text-2xl font-bold font-mono text-teal-400 mt-1">
                       {(modelInfo.metrics.precision * 100).toFixed(2)}%
                     </div>
-                    <span className="text-[11px] text-gray-500">Balanced class weighting</span>
+                    <span className="text-[10px] text-gray-500">Low false alarm rate</span>
                   </div>
-                  <div className="glass-panel p-5 rounded-2xl">
-                    <span className="text-xs text-gray-400 font-medium">F1-Score</span>
-                    <div className="text-3xl font-extrabold font-mono text-amber-400 mt-1">
+                  <div className="panel-card p-4 rounded-xl">
+                    <span className="text-xs text-gray-400">F1-Score</span>
+                    <div className="text-2xl font-bold font-mono text-amber-400 mt-1">
                       {modelInfo.metrics.f1.toFixed(4)}
                     </div>
-                    <span className="text-[11px] text-gray-500">Harmonic mean</span>
+                    <span className="text-[10px] text-gray-500">Harmonic mean</span>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Confusion Matrix */}
-                  <div className="glass-panel p-6 rounded-2xl space-y-4">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Test Set Confusion Matrix</h3>
-                    <div className="grid grid-cols-2 gap-3 text-center font-mono">
-                      <div className="glass-card p-4 rounded-xl border border-emerald-500/20">
-                        <span className="text-xs text-gray-400 block mb-1">True Negatives (TN)</span>
-                        <div className="text-2xl font-bold text-emerald-400">{modelInfo.metrics.tn.toLocaleString()}</div>
-                        <span className="text-[10px] text-gray-500">Legit approved</span>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="panel-card p-5 rounded-xl space-y-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-300">Confusion Matrix</h3>
+                    <div className="grid grid-cols-2 gap-3 font-mono text-center">
+                      <div className="sub-card p-3 rounded-lg border border-gray-800">
+                        <span className="text-[11px] text-gray-400 block">True Negatives</span>
+                        <div className="text-xl font-bold text-emerald-400">{modelInfo.metrics.tn.toLocaleString()}</div>
+                        <span className="text-[10px] text-gray-500">Legitimate cleared</span>
                       </div>
-                      <div className="glass-card p-4 rounded-xl border border-amber-500/20">
-                        <span className="text-xs text-gray-400 block mb-1">False Positives (FP)</span>
-                        <div className="text-2xl font-bold text-amber-400">{modelInfo.metrics.fp.toLocaleString()}</div>
-                        <span className="text-[10px] text-gray-500">Legit flagged (0.09%)</span>
+                      <div className="sub-card p-3 rounded-lg border border-gray-800">
+                        <span className="text-[11px] text-gray-400 block">False Positives</span>
+                        <div className="text-xl font-bold text-amber-400">{modelInfo.metrics.fp.toLocaleString()}</div>
+                        <span className="text-[10px] text-gray-500">Legitimate flagged (0.09%)</span>
                       </div>
-                      <div className="glass-card p-4 rounded-xl border border-rose-500/20">
-                        <span className="text-xs text-gray-400 block mb-1">False Negatives (FN)</span>
-                        <div className="text-2xl font-bold text-rose-400">{modelInfo.metrics.fn.toLocaleString()}</div>
-                        <span className="text-[10px] text-gray-500">Missed fraud</span>
+                      <div className="sub-card p-3 rounded-lg border border-gray-800">
+                        <span className="text-[11px] text-gray-400 block">False Negatives</span>
+                        <div className="text-xl font-bold text-rose-400">{modelInfo.metrics.fn.toLocaleString()}</div>
+                        <span className="text-[10px] text-gray-500">Missed frauds</span>
                       </div>
-                      <div className="glass-card p-4 rounded-xl border border-indigo-500/20">
-                        <span className="text-xs text-gray-400 block mb-1">True Positives (TP)</span>
-                        <div className="text-2xl font-bold text-indigo-400">{modelInfo.metrics.tp.toLocaleString()}</div>
-                        <span className="text-[10px] text-gray-500">Fraud detected</span>
+                      <div className="sub-card p-3 rounded-lg border border-gray-800">
+                        <span className="text-[11px] text-gray-400 block">True Positives</span>
+                        <div className="text-xl font-bold text-blue-400">{modelInfo.metrics.tp.toLocaleString()}</div>
+                        <span className="text-[10px] text-gray-500">Frauds intercepted</span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Architecture Overview */}
-                  <div className="glass-panel p-6 rounded-2xl space-y-3">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-white">Hybrid Dual-Engine Architecture</h3>
-                    <p className="text-xs text-gray-300 leading-relaxed">
-                      Credit card fraud datasets exhibit severe class imbalance (0.17% positive rate). Our system combines two complementary models:
+                  <div className="panel-card p-5 rounded-xl space-y-3 text-xs text-gray-300">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-gray-300">Dataset & Currency Context</h3>
+                    <p className="leading-relaxed text-gray-400">
+                      The dataset comprises 284,807 transactions made by European cardholders in September 2013 (with amounts recorded in <strong className="text-gray-200">Euros €</strong>).
                     </p>
-                    <div className="space-y-2 pt-1 text-xs">
-                      <div className="p-2.5 rounded-xl bg-indigo-950/40 border border-indigo-800/40">
-                        <span className="font-bold text-indigo-300">1. Balanced Random Forest (Supervised):</span>
-                        <p className="text-gray-400 mt-0.5">Trained with balanced bootstrap bagging on all historical fraud patterns and subsampled legitimate spend.</p>
+                    <div className="space-y-2 pt-1">
+                      <div className="p-2.5 rounded bg-gray-900 border border-gray-800">
+                        <span className="font-semibold text-gray-200">Currency Conversion:</span>
+                        <p className="text-gray-400 mt-0.5">The dashboard includes a real-time multi-currency converter (EUR, INR ₹, USD $, GBP £) so amounts can be analyzed in any preferred denomination.</p>
                       </div>
-                      <div className="p-2.5 rounded-xl bg-cyan-950/40 border border-cyan-800/40">
-                        <span className="font-bold text-cyan-300">2. Isolation Forest (Unsupervised Anomaly):</span>
-                        <p className="text-gray-400 mt-0.5">Trained exclusively on legitimate transactions to detect novel, zero-day spending outliers.</p>
-                      </div>
-                      <div className="p-2.5 rounded-xl bg-amber-950/40 border border-amber-800/40">
-                        <span className="font-bold text-amber-300">3. Adaptive Risk Combiner:</span>
-                        <p className="text-gray-400 mt-0.5">Dynamically shifts weighting toward anomaly detection when supervised confidence is uncertain or during nocturnal hours.</p>
+                      <div className="p-2.5 rounded bg-gray-900 border border-gray-800">
+                        <span className="font-semibold text-gray-200">Class Imbalance Handling:</span>
+                        <p className="text-gray-400 mt-0.5">Only 0.173% of transactions are fraudulent. The Random Forest model applies balanced bagging, while the Isolation Forest learns normal spending baseline.</p>
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
             )}
+
           </main>
 
           {/* Footer */}
           <footer className="border-t border-gray-800 py-4 text-center text-xs text-gray-500 font-mono">
-            Credit Card Fraud & Risk Analyser • Powered by FastAPI & React 18
+            Fraud Risk Analyser • Built with FastAPI & React 18
           </footer>
         </div>
       );

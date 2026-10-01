@@ -104,7 +104,7 @@ def explain_row(
         notes.append("Transaction occurred during high-risk overnight hours (22:00 - 06:00).")
 
     if amount is not None and amount > 500:
-        notes.append(f"Elevated transaction amount (${amount:.2f}) increased risk sensitivity.")
+        notes.append(f"Elevated transaction amount ({amount:,.2f}) increased risk sensitivity.")
 
     if action == "APPROVE":
         notes.append("Risk indicators are well below the low threshold (0.30). Safe to approve instantly.")
