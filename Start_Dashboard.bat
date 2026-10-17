@@ -1,14 +1,14 @@
 @echo off
-title SentinelPay AI - Fraud & Risk Decision Console
+title Fraud Risk Analyser Dashboard
 echo ===================================================================
-echo   Starting SentinelPay AI - Fraud & Risk Decision Platform
-echo   Local URL: http://127.0.0.1:8000
-echo   API Docs:  http://127.0.0.1:8000/docs
+echo   Starting Credit Card Fraud & Risk Analyser Dashboard
+echo   Web Dashboard: http://localhost
+echo   API Docs:      http://localhost/docs
 echo ===================================================================
 echo.
 cd /d "%~dp0"
 timeout /t 2 /nobreak >nul
-start http://127.0.0.1:8000
+start http://localhost
 python main.py
 if errorlevel 1 (
     echo.

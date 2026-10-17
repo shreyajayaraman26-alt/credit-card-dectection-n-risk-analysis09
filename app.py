@@ -22,7 +22,7 @@ MODEL_PATH = ROOT / "models" / "trained_models.pkl"
 STATIC_DIR = ROOT / "static"
 
 app = FastAPI(
-    title="SentinelPay AI - Fraud Detection & Risk Analysis API",
+    title="Credit Card Fraud & Risk Analyser API",
     description="Adaptive Supervised + Unsupervised Hybrid Risk Engine API",
     version="2.0.0",
 )
