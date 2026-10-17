@@ -15,8 +15,8 @@ if __name__ == "__main__":
         run_training()
 
     print("=" * 65)
-    print("[SERVER] Starting Credit Card Fraud & Risk Analyser (FastAPI + React)")
-    print("[SERVER] Web Application: http://127.0.0.1:8000")
+    print("[SERVER] Starting SentinelPay AI (FastAPI + React 18)")
+    print("[SERVER] Web Dashboard: http://127.0.0.1:8000")
     print("[SERVER] API Docs (Swagger): http://127.0.0.1:8000/docs")
     print("=" * 65)
 
