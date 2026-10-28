@@ -1,0 +1,5 @@
+Model,Scoring Type,Decision Threshold,Accuracy,Precision,Recall,F1-Score,ROC-AUC,PR-AUC (AP),False-Positive Rate,TN,FP,FN,TP
+Random Forest,Supervised Probability,0.50,0.998859,0.618705,0.877551,0.725738,0.984850,0.816467,0.000932,56810,53,12,86
+Isolation Forest,Unsupervised Anomaly Score,0.50,0.987132,0.093470,0.744898,0.166098,0.954877,0.151396,0.012451,56155,708,25,73
+Hybrid Risk Engine (FLAG),Adaptive Risk Index,0.70 (Strict Block),0.999245,0.761905,0.816327,0.788177,0.976825,0.769333,0.000440,56838,25,18,80
+Hybrid Risk Engine (Total Intercept),Adaptive Risk Index,0.30 (REVIEW + FLAG),0.986342,0.103730,0.908163,0.186192,0.976825,0.769333,0.013524,56094,769,9,89

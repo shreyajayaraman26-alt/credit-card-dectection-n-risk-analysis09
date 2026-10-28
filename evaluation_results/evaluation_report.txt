@@ -1,0 +1,101 @@
+========================================================================================
+             ACADEMIC AI/ML PERFORMANCE EVALUATION REPORT
+               Credit Card Fraud Detection & Adaptive Risk Analyser
+========================================================================================
+Generated: 2026-10-28 16:14:57
+Project Root: C:\Users\shrey\OneDrive\Documents\credit card fraud and risk analyser
+Model Bundle: C:\Users\shrey\OneDrive\Documents\credit card fraud and risk analyser\models\trained_models.pkl
+
+1. DATASET & PARTITIONING SPECIFICATIONS
+----------------------------------------------------------------------------------------
+- Source Dataset:                   Kaggle European Cardholders Credit Card Dataset
+- Total Records in Benchmark:       284,807 transactions
+- Positive Class Prevalence:        492 frauds (0.173% total)
+- Partitioning Protocol:            80% Train, 20% Test (Stratified, random_state=42)
+- Total Holdout Test Records:       56,961 transactions
+- Legitimate Test Transactions (0): 56,863 (99.83%)
+- Fraudulent Test Transactions (1): 98 (0.172%)
+- Feature Dimensions (Engineered):  32 features [V1..V28, Amount, Hour, LogAmount, Night]
+- Data Leakage Check:               PASSED. Test set strictly held out and untouched.
+
+2. QUANTITATIVE MODEL PERFORMANCE COMPARISON TABLE
+----------------------------------------------------------------------------------------
+Metric               Random Forest       Isolation Forest    Hybrid (FLAG >= 0.70)  Hybrid (Intercept >= 0.30)
+----------------------------------------------------------------------------------------
+Scoring Type         Supervised Prob     Anomaly Score       Adaptive Risk Index    Adaptive Risk Index
+Threshold            >= 0.50             >= 0.50             >= 0.70                >= 0.30
+Accuracy             99.89% (0.9989)  98.71% (0.9871)   99.92% (0.9992)    98.63% (0.9863)
+Precision            61.87% (0.6187)  9.35% (0.0935)   76.19% (0.7619)    10.37% (0.1037)
+Recall (TPR)         87.76% (0.8776)  74.49% (0.7449)   81.63% (0.8163)    90.82% (0.9082)
+F1-Score             0.7257              0.1661              0.7882                 0.1862
+ROC-AUC              0.9849              0.9549              0.9768                 0.9768
+PR-AUC (Avg Prec)    0.8165              0.1514              0.7693                 0.7693
+False-Positive Rate  0.093% (0.00093) 1.245% (0.01245)  0.044% (0.00044)   1.352% (0.01352)
+
+3. CONFUSION MATRIX BREAKDOWN (TEST SET: 56,961 ROWS)
+----------------------------------------------------------------------------------------
+Model: Random Forest (Threshold >= 0.50)
+  True Negatives (TN):  56,810 (Correctly authorized legitimate transactions)
+  False Positives (FP): 53 (False alarms: legitimate flagged as fraud)
+  False Negatives (FN): 12 (Missed frauds)
+  True Positives (TP):  86 (Detected frauds: 86/98)
+
+Model: Isolation Forest (Threshold >= 0.50)
+  True Negatives (TN):  56,155
+  False Positives (FP): 708
+  False Negatives (FN): 25
+  True Positives (TP):  73 (73/98)
+
+Model: Hybrid Risk Engine (Strict Block Threshold >= 0.70)
+  True Negatives (TN):  56,838
+  False Positives (FP): 25
+  False Negatives (FN): 18
+  True Positives (TP):  80 (80/98)
+
+Model: Hybrid Risk Engine (Total Intercept Threshold >= 0.30 - REVIEW + FLAG)
+  True Negatives (TN):  56,094
+  False Positives (FP): 769
+  False Negatives (FN): 9
+  True Positives (TP):  89 (89/98)
+
+4. THREE-TIER ADAPTIVE RISK ENGINE OPERATIONAL TRIAGE
+----------------------------------------------------------------------------------------
+In real-world banking operations, the Hybrid Risk Engine produces three actions:
+  - APPROVE (Risk < 0.30):             56,103 transactions (98.49% of volume) -> 9 missed frauds
+  - REVIEW  (0.30 <= Risk < 0.70):        753 transactions ( 1.32% of volume) -> 9 frauds caught for 2FA
+  - FLAG    (Risk >= 0.70):               105 transactions ( 0.18% of volume) -> 80 frauds blocked outright
+Total Fraud Interception (REVIEW + FLAG): 89 out of 98 frauds intercepted (90.82% Interception Rate).
+
+5. SCIENTIFIC ANALYSIS & EVALUATION LIMITATIONS
+----------------------------------------------------------------------------------------
+1. Supervised vs. Unsupervised Behavior:
+   - Random Forest achieves superior Precision (61.87%) because it was trained with 
+     supervised fraud labels. Its balanced bagging allows it to isolate known fraud patterns.
+   - Isolation Forest was trained strictly on legitimate spending patterns WITHOUT fraud labels.
+     Its anomaly score represents geometric distance from the central spending distribution,
+     NOT calibrated fraud probability. Consequently, unusual legitimate transactions (e.g. large
+     amounts, atypical night-time purchases) score as outliers, causing a lower precision (0.24%).
+     Its primary academic purpose is detecting novel, zero-day attacks that bypass supervised rules.
+
+2. Impact of the Adaptive Hybrid Risk Combiner:
+   - The Hybrid Risk Engine does not replace the supervised model, but acts as an operational arbiter.
+   - Strict Blocking (FLAG >= 0.70): Captures 80 frauds with only 25 false alarms (Precision 76.19%),
+     significantly reducing unnecessary card freezes compared to standalone Random Forest (53 false alarms).
+   - Total Interception (>= 0.30): Intercepts 89 out of 98 frauds (90.82% recall), routing ambiguous
+     cases to secondary verification (SMS OTP / 2FA) without declining genuine cardholders.
+
+3. Impact of Severe Class Imbalance:
+   - With a fraud prevalence of only 0.173%, Accuracy (99.89%) is an uninformative metric because
+     a naive zero-rule classifier achieves 99.83% accuracy.
+   - The scientifically valid evaluation metrics are PR-AUC (Average Precision) and F1-Score.
+   - Random Forest achieves an outstanding PR-AUC of 0.8165 against a random baseline of 0.0017.
+
+6. GENERATED EVALUATION ARTIFACTS
+----------------------------------------------------------------------------------------
+- Metrics Summary CSV:              C:\Users\shrey\OneDrive\Documents\credit card fraud and risk analyser\evaluation_results/metrics_summary.csv
+- Random Forest Confusion Matrix:   C:\Users\shrey\OneDrive\Documents\credit card fraud and risk analyser\evaluation_results/confusion_matrix_random_forest.png
+- Isolation Forest Confusion Matrix:C:\Users\shrey\OneDrive\Documents\credit card fraud and risk analyser\evaluation_results/confusion_matrix_isolation_forest.png
+- Hybrid Engine Confusion Matrix:   C:\Users\shrey\OneDrive\Documents\credit card fraud and risk analyser\evaluation_results/confusion_matrix_hybrid.png
+- Combined ROC Curve:               C:\Users\shrey\OneDrive\Documents\credit card fraud and risk analyser\evaluation_results/roc_curve.png
+- Combined Precision-Recall Curve:  C:\Users\shrey\OneDrive\Documents\credit card fraud and risk analyser\evaluation_results/precision_recall_curve.png
+========================================================================================
